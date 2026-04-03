@@ -17,7 +17,6 @@ on:
           - "true"
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/nvidia-egl-desktop-custom
 jobs:
   build:
     name: Build and push Ubuntu ${{ matrix.os_version }}
@@ -35,6 +34,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Normalize image name
+      run: echo "IMAGE_NAME=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/nvidia-egl-desktop-custom" >> "$GITHUB_ENV"
 
     - name: Fetch commit time
       run: echo "COMMIT_TIME_GIT=$(TZ=UTC git show -s --format='%cd' --date=format-local:'%Y%m%d%H%M%S')" >> "$GITHUB_ENV"
