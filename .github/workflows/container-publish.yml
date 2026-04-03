@@ -6,13 +6,18 @@ name: Publish container
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    inputs:
+      include_libreoffice:
+        description: "Install LibreOffice packages"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: selkies-project/nvidia-egl-desktop
+  IMAGE_NAME: ${{ github.repository_owner }}/nvidia-egl-desktop-custom
 jobs:
   build:
     name: Build and push Ubuntu ${{ matrix.os_version }}
@@ -59,10 +64,12 @@ jobs:
       with:
         build-args: |
           DISTRIB_RELEASE=${{ matrix.os_version }}
+          INSTALL_STEAM=1
+          INSTALL_LIBREOFFICE=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_libreoffice == 'true' && '1' || '0' }}
         context: .
         labels: ${{ steps.meta.outputs.labels }}
         no-cache: true
-        push: ${{ github.event_name != 'pull_request' }}
+        push: true
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.os_version }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.os_version }}-${{ env.COMMIT_TIME_GIT }}

@@ -314,6 +314,8 @@ RUN cd /tmp && VIRTUALGL_VERSION="$(curl -fsSL "https://api.github.com/repos/Vir
 # Anything below this line should always be kept the same between docker-selkies-glx-desktop and docker-selkies-egl-desktop
 
 # Install KDE and other GUI packages
+ARG INSTALL_LIBREOFFICE=0
+ARG INSTALL_STEAM=1
 RUN mkdir -pm755 /etc/apt/preferences.d && echo "Package: firefox*\n\
 Pin: version 1:1snap*\n\
 Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
@@ -439,11 +441,15 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         xdg-utils \
         firefox \
         transmission-qt && \
+    if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1" ]; then \
+    add-apt-repository -y multiverse && apt-get update && apt-get install --install-recommends -y \
+        steam-installer; fi && \
+    if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then \
     apt-get install --install-recommends -y \
         libreoffice \
         libreoffice-kf5 \
         libreoffice-plasma \
-        libreoffice-style-breeze && \
+        libreoffice-style-breeze; fi && \
     # Ensure Firefox as the default web browser
     xdg-settings set default-web-browser firefox.desktop && \
     update-alternatives --set x-www-browser /usr/bin/firefox && \
