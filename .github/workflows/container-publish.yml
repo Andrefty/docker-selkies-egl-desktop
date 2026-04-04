@@ -15,6 +15,14 @@ on:
         options:
           - "false"
           - "true"
+      steam_prebootstrap:
+        description: "Prebootstrap full Steam client files into image seed"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 env:
   REGISTRY: ghcr.io
 jobs:
@@ -66,6 +74,8 @@ jobs:
           DISTRIB_RELEASE=${{ matrix.os_version }}
           INSTALL_STEAM=1
           INSTALL_LIBREOFFICE=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_libreoffice == 'true' && '1' || '0' }}
+          STEAM_PREBOOTSTRAP=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.steam_prebootstrap == 'false' && '0' || '1' }}
+          STEAM_PREBOOTSTRAP_STRICT=0
         context: .
         labels: ${{ steps.meta.outputs.labels }}
         no-cache: true
