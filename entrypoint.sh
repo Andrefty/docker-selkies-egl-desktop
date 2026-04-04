@@ -23,6 +23,36 @@ export PATH="${PATH:+${PATH}:}/usr/local/games:/usr/games"
 # Add LibreOffice to library path
 export LD_LIBRARY_PATH="/usr/lib/libreoffice/program${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
+hydrate_steam_seed() {
+  local seed_root="${STEAM_SEED_ROOT:-/opt/steam-seed}"
+  local seed_steam_bin="${seed_root}/.steam/debian-installation/ubuntu12_32/steam"
+  local user_steam_bin="${HOME}/.steam/debian-installation/ubuntu12_32/steam"
+
+  if [ "${SELKIES_STEAM_HYDRATE:-1}" != "1" ]; then
+    echo "Steam seed hydration disabled (SELKIES_STEAM_HYDRATE!=1)."
+    return 0
+  fi
+
+  if [ ! -x "${seed_steam_bin}" ]; then
+    return 0
+  fi
+
+  if [ -x "${user_steam_bin}" ]; then
+    echo "Steam seed hydration skipped: existing Steam client found in ${HOME}."
+    return 0
+  fi
+
+  echo "Hydrating Steam client seed into ${HOME} ..."
+  mkdir -pm700 "${HOME}/.steam" "${HOME}/.local/share/Steam"
+  cp -a "${seed_root}/.steam/." "${HOME}/.steam/" || true
+  if [ -d "${seed_root}/.local/share/Steam" ]; then
+    cp -a "${seed_root}/.local/share/Steam/." "${HOME}/.local/share/Steam/" || true
+  fi
+  chown -R -f "$(id -nu):$(id -ng)" "${HOME}/.steam" "${HOME}/.local/share/Steam" || true
+}
+
+hydrate_steam_seed
+
 # Configure joystick interposer
 export SELKIES_INTERPOSER='/usr/$LIB/selkies_joystick_interposer.so'
 export LD_PRELOAD="${SELKIES_INTERPOSER}${LD_PRELOAD:+:${LD_PRELOAD}}"

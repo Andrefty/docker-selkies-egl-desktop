@@ -316,6 +316,10 @@ RUN cd /tmp && VIRTUALGL_VERSION="$(curl -fsSL "https://api.github.com/repos/Vir
 # Install KDE and other GUI packages
 ARG INSTALL_LIBREOFFICE=0
 ARG INSTALL_STEAM=1
+ARG STEAM_PREBOOTSTRAP=1
+ARG STEAM_PREBOOTSTRAP_STRICT=0
+ENV STEAM_SEED_ROOT=/opt/steam-seed
+ENV SELKIES_STEAM_HYDRATE=1
 RUN mkdir -pm755 /etc/apt/preferences.d && echo "Package: firefox*\n\
 Pin: version 1:1snap*\n\
 Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
@@ -443,7 +447,17 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         transmission-qt && \
     if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1" ]; then \
     add-apt-repository -y multiverse && apt-get update && apt-get install --install-recommends -y \
-        steam-installer; fi && \
+        steam-installer && apt-get install --no-install-recommends -y \
+        bubblewrap \
+        libasound2-plugins:i386 \
+        libdbus-1-3:i386 \
+        libfontconfig1:i386 \
+        libgcc-s1:i386 \
+        libnss3:i386 \
+        libstdc++6:i386 \
+        zlib1g:i386 && \
+    command -v bwrap >/dev/null 2>&1 && \
+    dpkg -s libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 >/dev/null 2>&1; fi && \
     if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then \
     apt-get install --install-recommends -y \
         libreoffice \
@@ -477,6 +491,32 @@ logout=false\n\
 \n\
 [General]\n\
 BrowserApplication=firefox.desktop" > /etc/xdg/kdeglobals
+
+RUN if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1" ] && [ "${STEAM_PREBOOTSTRAP}" = "1" ]; then \
+    STEAM_BOOT_HOME="/tmp/steam-bootstrap-home" && \
+    STEAM_BOOT_RUNTIME="/tmp/steam-bootstrap-runtime" && \
+    rm -rf "${STEAM_SEED_ROOT}" "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}" && \
+    mkdir -pm755 "${STEAM_SEED_ROOT}" && \
+    mkdir -pm700 "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}" && \
+    if dbus-run-session -- sh -lc 'set -e; export HOME=/tmp/steam-bootstrap-home; export XDG_RUNTIME_DIR=/tmp/steam-bootstrap-runtime; export DISPLAY=:98; /usr/bin/Xvfb :98 -screen 0 1280x720x24 -nolisten tcp -ac -noreset >/tmp/steam-bootstrap-xvfb.log 2>&1 & xvfb_pid=$!; trap "kill $xvfb_pid >/dev/null 2>&1 || true" EXIT INT TERM; for i in $(seq 1 30); do [ -S /tmp/.X11-unix/X98 ] && break; sleep 1; done; timeout 300 /usr/games/steam -silent +quit >/tmp/steam-bootstrap.log 2>&1 || true; pkill -f "/tmp/steam-bootstrap-home/.steam|steamwebhelper|steam -srt-logger-opened|steam.sh" >/dev/null 2>&1 || true; sleep 1'; then \
+        if [ -x "${STEAM_BOOT_HOME}/.steam/debian-installation/ubuntu12_32/steam" ]; then \
+            mkdir -pm700 "${STEAM_SEED_ROOT}/.steam" "${STEAM_SEED_ROOT}/.local/share/Steam" && \
+            cp -a "${STEAM_BOOT_HOME}/.steam/." "${STEAM_SEED_ROOT}/.steam/" && \
+            if [ -d "${STEAM_BOOT_HOME}/.local/share/Steam" ]; then cp -a "${STEAM_BOOT_HOME}/.local/share/Steam/." "${STEAM_SEED_ROOT}/.local/share/Steam/"; fi && \
+            rm -rf "${STEAM_SEED_ROOT}/.steam/steam/logs" "${STEAM_SEED_ROOT}/.steam/debian-installation/logs" && \
+            touch "${STEAM_SEED_ROOT}/.seed-ready" && \
+            echo "Steam prebootstrap seed created at ${STEAM_SEED_ROOT}"; \
+        else \
+            echo "WARNING: Steam prebootstrap ran but did not produce a full client tree."; \
+            if [ "${STEAM_PREBOOTSTRAP_STRICT}" = "1" ]; then exit 1; fi; \
+        fi; \
+    else \
+        echo "WARNING: Steam prebootstrap command failed."; \
+        if [ "${STEAM_PREBOOTSTRAP_STRICT}" = "1" ]; then exit 1; fi; \
+    fi && \
+    rm -rf "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
+fi
+
 # KDE environment variables
 ENV DESKTOP_SESSION=plasma
 ENV XDG_SESSION_DESKTOP=KDE
