@@ -493,27 +493,60 @@ logout=false\n\
 BrowserApplication=firefox.desktop" > /etc/xdg/kdeglobals
 
 RUN if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1" ] && [ "${STEAM_PREBOOTSTRAP}" = "1" ]; then \
-    STEAM_BOOT_HOME="/tmp/steam-bootstrap-home" && \
-    STEAM_BOOT_RUNTIME="/tmp/steam-bootstrap-runtime" && \
-    rm -rf "${STEAM_SEED_ROOT}" "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}" && \
-    mkdir -pm755 "${STEAM_SEED_ROOT}" && \
-    mkdir -pm700 "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}" && \
-    if dbus-run-session -- sh -lc 'set -e; export HOME=/tmp/steam-bootstrap-home; export XDG_RUNTIME_DIR=/tmp/steam-bootstrap-runtime; export DISPLAY=:98; /usr/bin/Xvfb :98 -screen 0 1280x720x24 -nolisten tcp -ac -noreset >/tmp/steam-bootstrap-xvfb.log 2>&1 & xvfb_pid=$!; trap "kill $xvfb_pid >/dev/null 2>&1 || true" EXIT INT TERM; for i in $(seq 1 30); do [ -S /tmp/.X11-unix/X98 ] && break; sleep 1; done; timeout 300 /usr/games/steam -silent +quit >/tmp/steam-bootstrap.log 2>&1 || true; pkill -f "/tmp/steam-bootstrap-home/.steam|steamwebhelper|steam -srt-logger-opened|steam.sh" >/dev/null 2>&1 || true; sleep 1'; then \
-        if [ -x "${STEAM_BOOT_HOME}/.steam/debian-installation/ubuntu12_32/steam" ]; then \
-            mkdir -pm700 "${STEAM_SEED_ROOT}/.steam" "${STEAM_SEED_ROOT}/.local/share/Steam" && \
-            cp -a "${STEAM_BOOT_HOME}/.steam/." "${STEAM_SEED_ROOT}/.steam/" && \
-            if [ -d "${STEAM_BOOT_HOME}/.local/share/Steam" ]; then cp -a "${STEAM_BOOT_HOME}/.local/share/Steam/." "${STEAM_SEED_ROOT}/.local/share/Steam/"; fi && \
-            rm -rf "${STEAM_SEED_ROOT}/.steam/steam/logs" "${STEAM_SEED_ROOT}/.steam/debian-installation/logs" && \
-            touch "${STEAM_SEED_ROOT}/.seed-ready" && \
-            echo "Steam prebootstrap seed created at ${STEAM_SEED_ROOT}"; \
+    STEAM_BOOT_HOME="/tmp/steam-bootstrap-home"; \
+    STEAM_BOOT_RUNTIME="/tmp/steam-bootstrap-runtime"; \
+    STEAM_BOOT_LOG="/tmp/steam-bootstrap.log"; \
+    STEAM_BOOT_XVFB_LOG="/tmp/steam-bootstrap-xvfb.log"; \
+    STEAM_BOOT_EXIT=0; \
+    STEAM_SEED_OK=0; \
+    rm -rf "${STEAM_SEED_ROOT}" "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
+    mkdir -pm755 "${STEAM_SEED_ROOT}"; \
+    mkdir -pm700 "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
+    STEAM_BOOTSTRAP_SCRIPT='set -eu; export HOME=/tmp/steam-bootstrap-home; export XDG_RUNTIME_DIR=/tmp/steam-bootstrap-runtime; export DISPLAY=:98; mkdir -pm700 "$HOME" "$XDG_RUNTIME_DIR"; /usr/bin/Xvfb :98 -screen 0 1280x720x24 -nolisten tcp -ac -noreset >/tmp/steam-bootstrap-xvfb.log 2>&1 & xvfb_pid=$!; trap "kill $xvfb_pid >/dev/null 2>&1 || true" EXIT INT TERM; for i in $(seq 1 30); do [ -S /tmp/.X11-unix/X98 ] && break; sleep 1; done; timeout 300 /usr/games/steam -silent +quit >/tmp/steam-bootstrap.log 2>&1 || true; pkill -f "/tmp/steam-bootstrap-home/.steam|steamwebhelper|steam -srt-logger-opened|steam.sh" >/dev/null 2>&1 || true; sleep 1'; \
+    if command -v Xvfb >/dev/null 2>&1; then \
+        if command -v dbus-run-session >/dev/null 2>&1; then \
+            if dbus-run-session -- sh -lc "${STEAM_BOOTSTRAP_SCRIPT}"; then \
+                STEAM_BOOT_EXIT=0; \
+            else \
+                STEAM_BOOT_EXIT=$?; \
+                echo "WARNING: Steam prebootstrap command with dbus-run-session failed with exit code ${STEAM_BOOT_EXIT}."; \
+            fi; \
         else \
-            echo "WARNING: Steam prebootstrap ran but did not produce a full client tree."; \
-            if [ "${STEAM_PREBOOTSTRAP_STRICT}" = "1" ]; then exit 1; fi; \
+            STEAM_BOOT_EXIT=127; \
+            echo "WARNING: Steam prebootstrap is running without dbus-run-session."; \
+        fi; \
+        if [ ! -x "${STEAM_BOOT_HOME}/.steam/debian-installation/ubuntu12_32/steam" ]; then \
+            if sh -lc "${STEAM_BOOTSTRAP_SCRIPT}"; then \
+                STEAM_BOOT_EXIT=0; \
+            else \
+                STEAM_BOOT_EXIT=$?; \
+                echo "WARNING: Steam prebootstrap fallback without dbus-run-session failed with exit code ${STEAM_BOOT_EXIT}."; \
+            fi; \
         fi; \
     else \
-        echo "WARNING: Steam prebootstrap command failed."; \
-        if [ "${STEAM_PREBOOTSTRAP_STRICT}" = "1" ]; then exit 1; fi; \
-    fi && \
+        STEAM_BOOT_EXIT=127; \
+        echo "WARNING: Steam prebootstrap skipped because Xvfb is missing."; \
+    fi; \
+    if [ -x "${STEAM_BOOT_HOME}/.steam/debian-installation/ubuntu12_32/steam" ]; then \
+        mkdir -pm700 "${STEAM_SEED_ROOT}/.steam" "${STEAM_SEED_ROOT}/.local/share/Steam"; \
+        cp -a "${STEAM_BOOT_HOME}/.steam/." "${STEAM_SEED_ROOT}/.steam/" || true; \
+        if [ -d "${STEAM_BOOT_HOME}/.local/share/Steam" ]; then cp -a "${STEAM_BOOT_HOME}/.local/share/Steam/." "${STEAM_SEED_ROOT}/.local/share/Steam/" || true; fi; \
+        rm -rf "${STEAM_SEED_ROOT}/.steam/steam/logs" "${STEAM_SEED_ROOT}/.steam/debian-installation/logs"; \
+        if [ -x "${STEAM_SEED_ROOT}/.steam/debian-installation/ubuntu12_32/steam" ]; then \
+            touch "${STEAM_SEED_ROOT}/.seed-ready"; \
+            STEAM_SEED_OK=1; \
+            echo "Steam prebootstrap seed created at ${STEAM_SEED_ROOT}"; \
+        else \
+            echo "WARNING: Steam prebootstrap produced partial files but seed validation failed."; \
+        fi; \
+    else \
+        echo "WARNING: Steam prebootstrap ran but did not produce a full client tree."; \
+    fi; \
+    if [ "${STEAM_SEED_OK}" != "1" ] && [ "${STEAM_PREBOOTSTRAP_STRICT}" = "1" ]; then \
+        echo "ERROR: Steam prebootstrap strict mode is enabled and no valid seed was produced."; \
+        echo "HINT: inspect ${STEAM_BOOT_LOG} and ${STEAM_BOOT_XVFB_LOG} in the build output."; \
+        exit 1; \
+    fi; \
     rm -rf "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
 fi
 
