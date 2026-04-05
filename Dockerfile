@@ -450,7 +450,7 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         transmission-qt && \
     if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1" ]; then \
     add-apt-repository -y multiverse && apt-get update && \
-    curl -fsSL -o /tmp/steam_latest.deb https://repo.steampowered.com/steam/archive/stable/steam_latest.deb && \
+    curl -fsSL -o /tmp/steam_latest.deb https://repo.steampowered.com/steam/archive/precise/steam_latest.deb && \
     apt-get install --install-recommends -y /tmp/steam_latest.deb && rm -f /tmp/steam_latest.deb && \
     apt-get install --no-install-recommends -y \
         bubblewrap \
