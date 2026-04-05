@@ -502,7 +502,7 @@ RUN if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1
     rm -rf "${STEAM_SEED_ROOT}" "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
     mkdir -pm755 "${STEAM_SEED_ROOT}"; \
     mkdir -pm700 "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
-    STEAM_BOOTSTRAP_SCRIPT='set -eu; export HOME=/tmp/steam-bootstrap-home; export XDG_RUNTIME_DIR=/tmp/steam-bootstrap-runtime; export DISPLAY=:98; mkdir -pm700 "$HOME" "$XDG_RUNTIME_DIR"; /usr/bin/Xvfb :98 -screen 0 1280x720x24 -nolisten tcp -ac -noreset >/tmp/steam-bootstrap-xvfb.log 2>&1 & xvfb_pid=$!; trap "kill $xvfb_pid >/dev/null 2>&1 || true" EXIT INT TERM; for i in $(seq 1 30); do [ -S /tmp/.X11-unix/X98 ] && break; sleep 1; done; timeout 300 /usr/games/steam -silent +quit >/tmp/steam-bootstrap.log 2>&1 || true; pkill -f "/tmp/steam-bootstrap-home/.steam|steamwebhelper|steam -srt-logger-opened|steam.sh" >/dev/null 2>&1 || true; sleep 1'; \
+    STEAM_BOOTSTRAP_SCRIPT='set -eu; export HOME=/tmp/steam-bootstrap-home; export XDG_RUNTIME_DIR=/tmp/steam-bootstrap-runtime; export DISPLAY=:98; mkdir -pm700 "$HOME" "$XDG_RUNTIME_DIR"; /usr/bin/Xvfb :98 -screen 0 1280x720x24 -nolisten tcp -ac -noreset >/tmp/steam-bootstrap-xvfb.log 2>&1 & xvfb_pid=$!; trap "kill $xvfb_pid >/dev/null 2>&1 || true" EXIT INT TERM; for i in $(seq 1 30); do [ -S /tmp/.X11-unix/X98 ] && break; sleep 1; done; timeout 300 /usr/games/steam -silent +quit >/tmp/steam-bootstrap.log 2>&1 || true; pkill -x steamwebhelper >/dev/null 2>&1 || true; pkill -x steam >/dev/null 2>&1 || true; sleep 1'; \
     if command -v Xvfb >/dev/null 2>&1; then \
         if command -v dbus-run-session >/dev/null 2>&1; then \
             if dbus-run-session -- sh -lc "${STEAM_BOOTSTRAP_SCRIPT}"; then \
