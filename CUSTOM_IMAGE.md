@@ -74,4 +74,6 @@ This is usually enough; publishing publicly is optional.
 1. Steam prebootstrap can add build time, but reduces first interactive setup friction.
 2. Seed files are stored outside `/home/ubuntu` inside the image and copied into runtime home on first launch.
 3. If you need the smallest build time, set `steam_prebootstrap=false` and let Steam bootstrap at runtime.
-4. If your host fully supports pressure-vessel namespaces, you can opt back in by setting `SELKIES_STEAM_NATIVE_DEFAULT=0`.
+4. The default `Steam` launcher uses a native-runtime wrapper to avoid namespace failures in nested container setups.
+5. For Proton-focused sessions on hosts with working user namespaces, use `Steam (Pressure Vessel)` or run `steam-pressure-vessel`.
+6. You can also opt back in globally by setting `SELKIES_STEAM_NATIVE_DEFAULT=0`.

@@ -471,8 +471,19 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         '  export STEAM_RUNTIME STEAM_RUNTIME_HEAVY' \
         'fi' \
         'exec /usr/games/steam "$@"' > /usr/local/bin/steam && \
+    printf '%s\n' '#!/bin/sh' \
+        '# Force pressure-vessel path for Proton-focused sessions on hosts with working user namespaces.' \
+        'export STEAM_RUNTIME=1' \
+        'export STEAM_RUNTIME_HEAVY=1' \
+        'exec /usr/games/steam "$@"' > /usr/local/bin/steam-pressure-vessel && \
     chmod -f 755 /usr/local/bin/steam && \
-    if [ -f /usr/share/applications/steam.desktop ]; then sed -i 's#^Exec=.*#Exec=/usr/local/bin/steam %U#' /usr/share/applications/steam.desktop; fi && \
+    chmod -f 755 /usr/local/bin/steam-pressure-vessel && \
+    if [ -f /usr/share/applications/steam.desktop ]; then \
+        sed -i 's#^Exec=.*#Exec=/usr/local/bin/steam %U#' /usr/share/applications/steam.desktop; \
+        cp -f /usr/share/applications/steam.desktop /usr/share/applications/steam-pressure-vessel.desktop; \
+        sed -i 's#^Name=.*#Name=Steam (Pressure Vessel)#' /usr/share/applications/steam-pressure-vessel.desktop; \
+        sed -i 's#^Exec=.*#Exec=/usr/local/bin/steam-pressure-vessel %U#' /usr/share/applications/steam-pressure-vessel.desktop; \
+    fi && \
     [ -x /usr/games/steam ] && \
     dpkg -s steam-launcher libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 libfreetype6:i386 >/dev/null 2>&1; fi && \
     if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then \
