@@ -322,6 +322,7 @@ ARG STEAM_PREBOOTSTRAP=1
 ARG STEAM_PREBOOTSTRAP_STRICT=0
 ENV STEAM_SEED_ROOT=/opt/steam-seed
 ENV SELKIES_STEAM_HYDRATE=1
+ENV SELKIES_STEAM_NATIVE_DEFAULT=1
 RUN mkdir -pm755 /etc/apt/preferences.d && echo "Package: firefox*\n\
 Pin: version 1:1snap*\n\
 Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
@@ -462,6 +463,16 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         libstdc++6:i386 \
         zlib1g:i386 && \
     command -v bwrap >/dev/null 2>&1 && \
+    printf '%s\n' '#!/bin/sh' \
+        '# Default to native runtime in nested/containerized sessions where user namespaces are often blocked.' \
+        'if [ "${SELKIES_STEAM_NATIVE_DEFAULT:-1}" = "1" ]; then' \
+        '  : "${STEAM_RUNTIME:=0}"' \
+        '  : "${STEAM_RUNTIME_HEAVY:=0}"' \
+        '  export STEAM_RUNTIME STEAM_RUNTIME_HEAVY' \
+        'fi' \
+        'exec /usr/games/steam "$@"' > /usr/local/bin/steam && \
+    chmod -f 755 /usr/local/bin/steam && \
+    if [ -f /usr/share/applications/steam.desktop ]; then sed -i 's#^Exec=.*#Exec=/usr/local/bin/steam %U#' /usr/share/applications/steam.desktop; fi && \
     [ -x /usr/games/steam ] && \
     dpkg -s steam-launcher libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 libfreetype6:i386 >/dev/null 2>&1; fi && \
     if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then \
@@ -707,7 +718,13 @@ USER 0
 # Enable sudo through sudo-root with uid 0
 RUN if [ -d "/usr/libexec/sudo" ]; then SUDO_LIB="/usr/libexec/sudo"; else SUDO_LIB="/usr/lib/sudo"; fi && \
     chown -R -f -h --no-preserve-root root:root /usr/bin/sudo-root /etc/sudo.conf /etc/sudoers /etc/sudoers.d /etc/sudo_logsrvd.conf "${SUDO_LIB}" || echo 'Failed to provide root permissions in some paths relevant to sudo' && \
-    chmod -f 4755 /usr/bin/sudo-root || echo 'Failed to set chmod setuid for root'
+    chmod -f 4755 /usr/bin/sudo-root && \
+    for helper in /usr/bin/pkexec /usr/lib/polkit-1/polkit-agent-helper-1 /usr/bin/bwrap; do \
+        if [ -e "${helper}" ]; then \
+            chown -f root:root "${helper}" || true; \
+            chmod -f 4755 "${helper}" || true; \
+        fi; \
+    done || echo 'Failed to restore setuid root on Steam helpers'
 USER 1000
 
 ENV PIPEWIRE_LATENCY="128/48000"

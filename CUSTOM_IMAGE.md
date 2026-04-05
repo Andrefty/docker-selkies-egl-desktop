@@ -8,11 +8,12 @@ This repo is configured so your fork can publish a Steam-enabled custom image to
 1. Installs Steam from Valve's `steam_latest.deb` plus pressure-vessel related dependencies on amd64 builds.
 2. Pre-bootstraps Steam client files during image build and stores a reusable seed in the image.
 3. Hydrates Steam seed files into runtime home on first launch (works with Apptainer `--home` bind behavior).
-4. Supports disabling Steam prebootstrap from workflow input if you need faster builds.
-5. Keeps LibreOffice optional (off by default).
-6. Rebuilds with `no-cache: true` so Lutris/Heroic/Selkies/KasmVNC version checks happen at build time.
-7. Runs only via manual `workflow_dispatch`.
-8. Does not run on schedule, push, or pull request by default.
+4. Uses a Steam wrapper that defaults to native runtime mode (`STEAM_RUNTIME=0`, `STEAM_RUNTIME_HEAVY=0`) for environments where user namespaces are restricted.
+5. Supports disabling Steam prebootstrap from workflow input if you need faster builds.
+6. Keeps LibreOffice optional (off by default).
+7. Rebuilds with `no-cache: true` so Lutris/Heroic/Selkies/KasmVNC version checks happen at build time.
+8. Runs only via manual `workflow_dispatch`.
+9. Does not run on schedule, push, or pull request by default.
 
 ## 1) Fork and publish
 
@@ -73,3 +74,4 @@ This is usually enough; publishing publicly is optional.
 1. Steam prebootstrap can add build time, but reduces first interactive setup friction.
 2. Seed files are stored outside `/home/ubuntu` inside the image and copied into runtime home on first launch.
 3. If you need the smallest build time, set `steam_prebootstrap=false` and let Steam bootstrap at runtime.
+4. If your host fully supports pressure-vessel namespaces, you can opt back in by setting `SELKIES_STEAM_NATIVE_DEFAULT=0`.
