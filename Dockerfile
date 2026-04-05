@@ -464,18 +464,38 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         zlib1g:i386 && \
     command -v bwrap >/dev/null 2>&1 && \
     printf '%s\n' '#!/bin/sh' \
+        'set -eu' \
+        'find_steam_launcher() {' \
+        '  for candidate in /usr/games/steam /usr/bin/steam /usr/lib/steam/steam /usr/lib/steam/steam.sh; do' \
+        '    [ -x "${candidate}" ] || continue' \
+        '    resolved="$(readlink -f "${candidate}" 2>/dev/null || printf "%s" "${candidate}")"' \
+        '    case "${resolved}" in' \
+        '      /usr/local/bin/steam|/usr/local/bin/steam-pressure-vessel) continue ;;' \
+        '    esac' \
+        '    printf "%s" "${candidate}"' \
+        '    return 0' \
+        '  done' \
+        '  return 1' \
+        '}' \
+        'STEAM_LAUNCHER="$(find_steam_launcher || true)"' \
+        'if [ -z "${STEAM_LAUNCHER}" ]; then' \
+        '  echo "ERROR: Steam launcher binary was not found. Checked /usr/games/steam, /usr/bin/steam, /usr/lib/steam/steam, /usr/lib/steam/steam.sh." >&2' \
+        '  exit 127' \
+        'fi' \
         '# Default to native runtime in nested/containerized sessions where user namespaces are often blocked.' \
         'if [ "${SELKIES_STEAM_NATIVE_DEFAULT:-1}" = "1" ]; then' \
         '  : "${STEAM_RUNTIME:=0}"' \
         '  : "${STEAM_RUNTIME_HEAVY:=0}"' \
         '  export STEAM_RUNTIME STEAM_RUNTIME_HEAVY' \
         'fi' \
-        'exec /usr/games/steam "$@"' > /usr/local/bin/steam && \
+        'exec "${STEAM_LAUNCHER}" "$@"' > /usr/local/bin/steam && \
     printf '%s\n' '#!/bin/sh' \
+        'set -eu' \
         '# Force pressure-vessel path for Proton-focused sessions on hosts with working user namespaces.' \
+        'export SELKIES_STEAM_NATIVE_DEFAULT=0' \
         'export STEAM_RUNTIME=1' \
         'export STEAM_RUNTIME_HEAVY=1' \
-        'exec /usr/games/steam "$@"' > /usr/local/bin/steam-pressure-vessel && \
+        'exec /usr/local/bin/steam "$@"' > /usr/local/bin/steam-pressure-vessel && \
     chmod -f 755 /usr/local/bin/steam && \
     chmod -f 755 /usr/local/bin/steam-pressure-vessel && \
     if [ -f /usr/share/applications/steam.desktop ]; then \
@@ -484,7 +504,7 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         sed -i 's#^Name=.*#Name=Steam (Pressure Vessel)#' /usr/share/applications/steam-pressure-vessel.desktop; \
         sed -i 's#^Exec=.*#Exec=/usr/local/bin/steam-pressure-vessel %U#' /usr/share/applications/steam-pressure-vessel.desktop; \
     fi && \
-    [ -x /usr/games/steam ] && \
+    { [ -x /usr/games/steam ] || [ -x /usr/bin/steam ] || [ -x /usr/lib/steam/steam ] || [ -x /usr/lib/steam/steam.sh ]; } && \
     dpkg -s steam-launcher libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 libfreetype6:i386 >/dev/null 2>&1; fi && \
     if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then \
     apt-get install --install-recommends -y \
@@ -531,7 +551,7 @@ RUN if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1
     rm -rf "${STEAM_SEED_ROOT}" "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
     mkdir -pm755 "${STEAM_SEED_ROOT}"; \
     mkdir -pm700 "${STEAM_BOOT_HOME}" "${STEAM_BOOT_RUNTIME}"; \
-    STEAM_BOOTSTRAP_SCRIPT='set -eu; export HOME=/tmp/steam-bootstrap-home; export XDG_RUNTIME_DIR=/tmp/steam-bootstrap-runtime; export DISPLAY=:98; mkdir -pm700 "$HOME" "$XDG_RUNTIME_DIR"; /usr/bin/Xvfb :98 -screen 0 1280x720x24 -nolisten tcp -ac -noreset >/tmp/steam-bootstrap-xvfb.log 2>&1 & xvfb_pid=$!; trap "kill $xvfb_pid >/dev/null 2>&1 || true" EXIT INT TERM; for i in $(seq 1 30); do [ -S /tmp/.X11-unix/X98 ] && break; sleep 1; done; timeout 300 /usr/games/steam -silent +quit >/tmp/steam-bootstrap.log 2>&1 || true; pkill -x steamwebhelper >/dev/null 2>&1 || true; pkill -x steam >/dev/null 2>&1 || true; sleep 1'; \
+    STEAM_BOOTSTRAP_SCRIPT='set -eu; export HOME=/tmp/steam-bootstrap-home; export XDG_RUNTIME_DIR=/tmp/steam-bootstrap-runtime; export DISPLAY=:98; mkdir -pm700 "$HOME" "$XDG_RUNTIME_DIR"; /usr/bin/Xvfb :98 -screen 0 1280x720x24 -nolisten tcp -ac -noreset >/tmp/steam-bootstrap-xvfb.log 2>&1 & xvfb_pid=$!; trap "kill $xvfb_pid >/dev/null 2>&1 || true" EXIT INT TERM; for i in $(seq 1 30); do [ -S /tmp/.X11-unix/X98 ] && break; sleep 1; done; timeout 300 /usr/local/bin/steam -silent +quit >/tmp/steam-bootstrap.log 2>&1 || true; pkill -x steamwebhelper >/dev/null 2>&1 || true; pkill -x steam >/dev/null 2>&1 || true; sleep 1'; \
     if command -v Xvfb >/dev/null 2>&1; then \
         if command -v dbus-run-session >/dev/null 2>&1; then \
             if dbus-run-session -- sh -lc "${STEAM_BOOTSTRAP_SCRIPT}"; then \
