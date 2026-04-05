@@ -5,7 +5,7 @@ This repo is configured so your fork can publish a Steam-enabled custom image to
 
 ## What this custom image does
 
-1. Installs Steam plus pressure-vessel related dependencies on amd64 builds.
+1. Installs Steam from Valve's `steam_latest.deb` plus pressure-vessel related dependencies on amd64 builds.
 2. Pre-bootstraps Steam client files during image build and stores a reusable seed in the image.
 3. Hydrates Steam seed files into runtime home on first launch (works with Apptainer `--home` bind behavior).
 4. Supports disabling Steam prebootstrap from workflow input if you need faster builds.

@@ -104,6 +104,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         fonts-opensymbol \
         fonts-symbola \
         fonts-ubuntu \
+        fonts-wqy-microhei \
+        fonts-wqy-zenhei \
         lame \
         less \
         libavcodec-extra \
@@ -446,18 +448,22 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         firefox \
         transmission-qt && \
     if [ "$(dpkg --print-architecture)" = "amd64" ] && [ "${INSTALL_STEAM}" = "1" ]; then \
-    add-apt-repository -y multiverse && apt-get update && apt-get install --install-recommends -y \
-        steam-installer && apt-get install --no-install-recommends -y \
+    add-apt-repository -y multiverse && apt-get update && \
+    curl -fsSL -o /tmp/steam_latest.deb https://repo.steampowered.com/steam/archive/stable/steam_latest.deb && \
+    apt-get install --install-recommends -y /tmp/steam_latest.deb && rm -f /tmp/steam_latest.deb && \
+    apt-get install --no-install-recommends -y \
         bubblewrap \
         libasound2-plugins:i386 \
         libdbus-1-3:i386 \
         libfontconfig1:i386 \
+        libfreetype6:i386 \
         libgcc-s1:i386 \
         libnss3:i386 \
         libstdc++6:i386 \
         zlib1g:i386 && \
     command -v bwrap >/dev/null 2>&1 && \
-    dpkg -s libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 >/dev/null 2>&1; fi && \
+    [ -x /usr/games/steam ] && \
+    dpkg -s steam-launcher libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 libfreetype6:i386 >/dev/null 2>&1; fi && \
     if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then \
     apt-get install --install-recommends -y \
         libreoffice \
@@ -469,6 +475,7 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
     update-alternatives --set x-www-browser /usr/bin/firefox && \
     # Install Google Chrome for supported architectures
     if [ "$(dpkg --print-architecture)" = "amd64" ]; then cd /tmp && curl -o google-chrome-stable.deb -fsSL "https://dl.google.com/linux/direct/google-chrome-stable_current_$(dpkg --print-architecture).deb" && apt-get update && apt-get install --no-install-recommends -y ./google-chrome-stable.deb && rm -f google-chrome-stable.deb && sed -i '/^Exec=/ s/$/ --password-store=basic --in-process-gpu/' /usr/share/applications/google-chrome.desktop; fi && \
+    fc-cache -f >/dev/null 2>&1 || true && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/debconf/* /var/log/* /tmp/* /var/tmp/* && \
     # Fix KDE startup permissions issues in containers
     MULTI_ARCH=$(dpkg --print-architecture | sed -e 's/arm64/aarch64-linux-gnu/' -e 's/armhf/arm-linux-gnueabihf/' -e 's/riscv64/riscv64-linux-gnu/' -e 's/ppc64el/powerpc64le-linux-gnu/' -e 's/s390x/s390x-linux-gnu/' -e 's/i.*86/i386-linux-gnu/' -e 's/amd64/x86_64-linux-gnu/' -e 's/unknown/x86_64-linux-gnu/') && \
