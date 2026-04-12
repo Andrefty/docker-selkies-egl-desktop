@@ -323,6 +323,8 @@ ARG STEAM_PREBOOTSTRAP_STRICT=0
 ENV STEAM_SEED_ROOT=/opt/steam-seed
 ENV SELKIES_STEAM_HYDRATE=1
 ENV SELKIES_STEAM_NATIVE_DEFAULT=1
+ENV SELKIES_STEAM_NAMESPACELESS_PATCH=1
+ENV SELKIES_STEAM_RUN_STEAMDEPS=0
 RUN mkdir -pm755 /etc/apt/preferences.d && echo "Package: firefox*\n\
 Pin: version 1:1snap*\n\
 Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
@@ -463,6 +465,49 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         libstdc++6:i386 \
         zlib1g:i386 && \
     command -v bwrap >/dev/null 2>&1 && \
+    install -d -m 755 /usr/local/share/selkies/steam && \
+    printf '%s\n' '#!/bin/sh' \
+        'while [ "$#" -gt 0 ]; do' \
+        '  case "$1" in' \
+        '    --*) shift ;;' \
+        '    *) break ;;' \
+        '  esac' \
+        'done' \
+        'exec "$@"' > /usr/local/share/selkies/steam/_v2-entry-point && \
+    chmod -f 755 /usr/local/share/selkies/steam/_v2-entry-point && \
+    printf '%s\n' '#!/bin/sh' \
+        'set -eu' \
+        'PATCH_SRC=/usr/local/share/selkies/steam/_v2-entry-point' \
+        '[ -x "${PATCH_SRC}" ] || exit 0' \
+        'LOOPS="${SELKIES_STEAM_PATCH_LOOPS:-1800}"' \
+        'SLEEP_SECONDS="${SELKIES_STEAM_PATCH_INTERVAL:-0.1}"' \
+        'while [ "${LOOPS}" -gt 0 ]; do' \
+        '  for target in "${HOME}/.steam/debian-installation/ubuntu12_64/steam-runtime-sniper/_v2-entry-point" "${HOME}/.steam/steam/ubuntu12_64/steam-runtime-sniper/_v2-entry-point" "${HOME}/.local/share/Steam/steamrt64/steam-runtime-steamrt/_v2-entry-point" "${HOME}/.local/share/Steam/steamapps/common/SteamLinuxRuntime_soldier/_v2-entry-point" "${HOME}/.local/share/Steam/steamapps/common/SteamLinuxRuntime_sniper/_v2-entry-point"; do' \
+        '    [ -f "${target}" ] || continue' \
+        '    [ -w "${target}" ] || continue' \
+        '    size="$(stat -c %s "${target}" 2>/dev/null || printf "0")"' \
+        '    tmp="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/selkies-steam-entrypoint.XXXXXX" 2>/dev/null || mktemp /tmp/selkies-steam-entrypoint.XXXXXX)"' \
+        '    cp -f "${PATCH_SRC}" "${tmp}" 2>/dev/null || { rm -f "${tmp}"; continue; }' \
+        '    if [ "${size}" -gt 0 ] 2>/dev/null; then truncate -s "${size}" "${tmp}" 2>/dev/null || true; fi' \
+        '    chmod +x "${tmp}" 2>/dev/null || true' \
+        '    cat "${tmp}" > "${target}" 2>/dev/null || cp -f "${tmp}" "${target}" 2>/dev/null || true' \
+        '    chmod +x "${target}" 2>/dev/null || true' \
+        '    rm -f "${tmp}"' \
+        '  done' \
+        '  sleep "${SLEEP_SECONDS}"' \
+        '  LOOPS=$((LOOPS - 1))' \
+        'done' > /usr/local/bin/steam-namespaceless-patcher && \
+    chmod -f 755 /usr/local/bin/steam-namespaceless-patcher && \
+    if [ -x /usr/bin/steamdeps ] && [ ! -e /usr/bin/steamdeps.real ]; then \
+        mv -f /usr/bin/steamdeps /usr/bin/steamdeps.real; \
+    fi && \
+    printf '%s\n' '#!/bin/sh' \
+        'if [ "${SELKIES_STEAM_RUN_STEAMDEPS:-0}" = "1" ] && [ -x /usr/bin/steamdeps.real ]; then' \
+        '  exec /usr/bin/steamdeps.real "$@"' \
+        'fi' \
+        'echo "steamdeps: skipping package manager checks in containerized sessions; set SELKIES_STEAM_RUN_STEAMDEPS=1 to re-enable." >&2' \
+        'exit 0' > /usr/bin/steamdeps && \
+    chmod -f 755 /usr/bin/steamdeps && \
     printf '%s\n' '#!/bin/sh' \
         'set -eu' \
         'find_steam_launcher() {' \
@@ -487,6 +532,13 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         '  : "${STEAM_RUNTIME:=0}"' \
         '  : "${STEAM_RUNTIME_HEAVY:=0}"' \
         '  export STEAM_RUNTIME STEAM_RUNTIME_HEAVY' \
+        'fi' \
+        'if [ "${SELKIES_STEAM_NAMESPACELESS_PATCH:-1}" = "1" ]; then' \
+        '  rm -f /run/systemd/container /run/host/container-manager >/dev/null 2>&1 || true' \
+        '  mkdir -p /run/pressure-vessel >/dev/null 2>&1 || true' \
+        '  if [ -x /usr/local/bin/steam-namespaceless-patcher ]; then' \
+        '    /usr/local/bin/steam-namespaceless-patcher >/dev/null 2>&1 &' \
+        '  fi' \
         'fi' \
         'exec "${STEAM_LAUNCHER}" "$@"' > /usr/local/bin/steam && \
     printf '%s\n' '#!/bin/sh' \
