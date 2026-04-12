@@ -461,8 +461,11 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         libfontconfig1:i386 \
         libfreetype6:i386 \
         libgcc-s1:i386 \
+        libgtk2.0-0:i386 \
         libnss3:i386 \
+        libpipewire-0.3-0:i386 \
         libstdc++6:i386 \
+        libxcb-res0:i386 \
         zlib1g:i386 && \
     command -v bwrap >/dev/null 2>&1 && \
     install -d -m 755 /usr/local/share/selkies/steam && \
@@ -557,7 +560,7 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         sed -i 's#^Exec=.*#Exec=/usr/local/bin/steam-pressure-vessel %U#' /usr/share/applications/steam-pressure-vessel.desktop; \
     fi && \
     { [ -x /usr/games/steam ] || [ -x /usr/bin/steam ] || [ -x /usr/lib/steam/steam ] || [ -x /usr/lib/steam/steam.sh ]; } && \
-    dpkg -s steam-launcher libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 libfreetype6:i386 >/dev/null 2>&1; fi && \
+    dpkg -s steam-launcher libstdc++6:i386 libgcc-s1:i386 libnss3:i386 libfontconfig1:i386 libfreetype6:i386 libgtk2.0-0:i386 libpipewire-0.3-0:i386 libxcb-res0:i386 >/dev/null 2>&1; fi && \
     if [ "${INSTALL_LIBREOFFICE}" = "1" ]; then \
     apt-get install --install-recommends -y \
         libreoffice \
