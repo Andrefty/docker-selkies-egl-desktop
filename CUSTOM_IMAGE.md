@@ -9,11 +9,13 @@ This repo is configured so your fork can publish a Steam-enabled custom image to
 2. Pre-bootstraps Steam client files during image build and stores a reusable seed in the image.
 3. Hydrates Steam seed files into runtime home on first launch (works with Apptainer `--home` bind behavior).
 4. Uses a Steam wrapper that defaults to native runtime mode (`STEAM_RUNTIME=0`, `STEAM_RUNTIME_HEAVY=0`) for environments where user namespaces are restricted.
-5. Supports disabling Steam prebootstrap from workflow input if you need faster builds.
-6. Keeps LibreOffice optional (off by default).
-7. Rebuilds with `no-cache: true` so Lutris/Heroic/Selkies/KasmVNC version checks happen at build time.
-8. Runs only via manual `workflow_dispatch`.
-9. Does not run on schedule, push, or pull request by default.
+5. Adds an unprivileged launch patcher that repeatedly patches Steam runtime `_v2-entry-point` files with a namespaceless shim while Steam starts.
+6. Bypasses `steamdeps` package-manager prompts by default to avoid `pkexec` failures inside unprivileged containers.
+7. Supports disabling Steam prebootstrap from workflow input if you need faster builds.
+8. Keeps LibreOffice optional (off by default).
+9. Rebuilds with `no-cache: true` so Lutris/Heroic/Selkies/KasmVNC version checks happen at build time.
+10. Runs only via manual `workflow_dispatch`.
+11. Does not run on schedule, push, or pull request by default.
 
 ## 1) Fork and publish
 
@@ -77,3 +79,6 @@ This is usually enough; publishing publicly is optional.
 4. The default `Steam` launcher uses a native-runtime wrapper to avoid namespace failures in nested container setups.
 5. For Proton-focused sessions on hosts with working user namespaces, use `Steam (Pressure Vessel)` or run `steam-pressure-vessel`.
 6. You can also opt back in globally by setting `SELKIES_STEAM_NATIVE_DEFAULT=0`.
+7. The image now enables an unprivileged runtime patcher by default (`SELKIES_STEAM_NAMESPACELESS_PATCH=1`) that patches `_v2-entry-point` files during launch.
+8. If you want to test pure upstream behavior, disable it with `SELKIES_STEAM_NAMESPACELESS_PATCH=0`.
+9. `steamdeps` is bypassed by default to avoid `pkexec` prompts in non-root sessions; set `SELKIES_STEAM_RUN_STEAMDEPS=1` if you explicitly want package checks and have working privilege escalation.
