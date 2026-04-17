@@ -8,7 +8,7 @@ This repo is configured so your fork can publish a Steam-enabled custom image to
 1. Installs Steam from Valve's `steam_latest.deb` plus pressure-vessel related dependencies on amd64 builds.
 2. Pre-bootstraps Steam client files during image build and stores a reusable seed in the image.
 3. Hydrates Steam seed files into runtime home on first launch (works with Apptainer `--home` bind behavior).
-4. Uses a Steam wrapper that defaults to native runtime mode (`STEAM_RUNTIME=0`, `STEAM_RUNTIME_HEAVY=0`) for environments where user namespaces are restricted.
+4. Uses a Steam wrapper that defaults to runtime-enabled non-heavy mode (`STEAM_RUNTIME=1`, `STEAM_RUNTIME_HEAVY=0`) for environments where user namespaces are restricted.
 5. Adds an unprivileged launch patcher that repeatedly patches Steam runtime `_v2-entry-point` files with a namespaceless shim while Steam starts.
 6. Bypasses `steamdeps` package-manager prompts by default to avoid `pkexec` failures inside unprivileged containers.
 7. Supports disabling Steam prebootstrap from workflow input if you need faster builds.
@@ -76,7 +76,7 @@ This is usually enough; publishing publicly is optional.
 1. Steam prebootstrap can add build time, but reduces first interactive setup friction.
 2. Seed files are stored outside `/home/ubuntu` inside the image and copied into runtime home on first launch.
 3. If you need the smallest build time, set `steam_prebootstrap=false` and let Steam bootstrap at runtime.
-4. The default `Steam` launcher uses a native-runtime wrapper to avoid namespace failures in nested container setups.
+4. The default `Steam` launcher uses runtime-enabled, non-heavy mode to keep client compatibility while avoiding forced pressure-vessel in nested container setups.
 5. For Proton-focused sessions on hosts with working user namespaces, use `Steam (Pressure Vessel)` or run `steam-pressure-vessel`.
 6. You can also opt back in globally by setting `SELKIES_STEAM_NATIVE_DEFAULT=0`.
 7. The image now enables an unprivileged runtime patcher by default (`SELKIES_STEAM_NAMESPACELESS_PATCH=1`) that patches `_v2-entry-point` files during launch.
