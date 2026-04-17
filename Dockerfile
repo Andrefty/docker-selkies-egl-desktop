@@ -530,9 +530,9 @@ Pin-Priority: -1" > /etc/apt/preferences.d/firefox-nosnap && \
         '  echo "ERROR: Steam launcher binary was not found. Checked /usr/games/steam, /usr/bin/steam, /usr/lib/steam/steam, /usr/lib/steam/steam.sh." >&2' \
         '  exit 127' \
         'fi' \
-        '# Default to native runtime in nested/containerized sessions where user namespaces are often blocked.' \
+        '# Default to runtime-enabled, non-heavy mode for compatibility without forcing pressure-vessel.' \
         'if [ "${SELKIES_STEAM_NATIVE_DEFAULT:-1}" = "1" ]; then' \
-        '  : "${STEAM_RUNTIME:=0}"' \
+        '  : "${STEAM_RUNTIME:=1}"' \
         '  : "${STEAM_RUNTIME_HEAVY:=0}"' \
         '  export STEAM_RUNTIME STEAM_RUNTIME_HEAVY' \
         'fi' \
